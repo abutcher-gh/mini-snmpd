@@ -21,6 +21,7 @@
 #include <errno.h>
 
 #include "mini_snmpd.h"
+#include "pass_persist.h"
 
 
 
@@ -780,7 +781,9 @@ static int handle_snmp_get(request_t *request, response_t *response, client_t *c
 	 * subid of the requested one (table cell of table column)!
 	 */
 	for (i = 0; i < request->oid_list_length; i++) {
-		value = mib_find(&request->oid_list[i], &pos);
+		value = maybe_handle_pass_persist("get", &request->oid_list[i]);
+		if (value == NULL)
+			value = mib_find(&request->oid_list[i], &pos);
 		if (value == NULL) {
 			SNMP_ERROR_MESSAGE(response,request,m_no_such_object,"could not handle SNMP GET: value list overflow\n");
 			continue;
@@ -819,7 +822,9 @@ static int handle_snmp_getnext(request_t *request, response_t *response, client_
 	 * subid of the requested one (table cell of table column)!
 	 */
 	for (i = 0; i < request->oid_list_length; i++) {
-		value = mib_findnext(&request->oid_list[i]);
+		value = maybe_handle_pass_persist("getnext", &request->oid_list[i]);
+		if (value == NULL)
+			value = mib_findnext(&request->oid_list[i]);
 		if (value == NULL) {
 			SNMP_ERROR_MESSAGE(response,request,m_end_of_mib_view,"could not handle SNMP GETNEXT: value list overflow\n");
 		} else {

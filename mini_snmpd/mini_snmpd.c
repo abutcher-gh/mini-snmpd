@@ -32,6 +32,7 @@
 #include <time.h>
 
 #include "mini_snmpd.h"
+#include "pass_persist.h"
 
 
 
@@ -56,6 +57,7 @@ static void print_help(void)
 	fprintf(stderr, "-i, --interfaces nnn   set the network interfaces to monitor (lo)\n");
 	fprintf(stderr, "-t, --timeout nnn      set the timeout for MIB updates (1 second)\n");
 	fprintf(stderr, "-a, --auth             require authentication (thus SNMP version 2c)\n");
+	fprintf(stderr, "-f, --netsnmp-conf     read some fields (and pass_persist) from a Net-SNMP style snmpd.conf\n");
 	fprintf(stderr, "-v, --verbose          verbose syslog messages \n");
 	fprintf(stderr, "-l, --licensing        print licensing info and exit\n");
 	fprintf(stderr, "-h, --help             print this help and exit\n");
@@ -298,6 +300,57 @@ static void handle_tcp_client_read(client_t *client)
 }
 #endif
 
+static void parse_netsnmp_conf(const char* path)
+{
+	FILE* file = fopen(path, "r");
+
+	char buf[2048];
+	char *line;
+
+	while ((line = fgets(buf, sizeof buf, file)))
+	{
+		if (line[0] == '#')
+			continue;
+
+		strtok(line, "\n");
+
+		size_t optend = strcspn(line, "\t ");
+
+		if (optend == 0)
+			continue;
+
+		char *opt = line;
+		line += optend + strspn(opt + optend, "\t ");
+		opt[optend] = 0;
+
+		switch (opt[0])
+		{
+		case 'r': // r?community
+			if (strcmp("community", opt + 2) == 0)
+			    g_community = strdup(line);
+			break;
+		case 's': // sys...
+			if (strcmp("Descr", opt + 3) == 0)
+				g_description = strdup(line);
+			else if (strcmp("Contact", opt + 3) == 0)
+				g_contact = strdup(line);
+			else if (strcmp("Location", opt + 3) == 0)
+				g_location = strdup(line);
+			break;
+		default:
+			;
+		}
+		if (strcmp("pass_persist", opt) == 0)
+		{
+			size_t oidend = strcspn(line, "\t ");
+			char *oid = line;
+			line += oidend + strspn(oid + oidend, "\t ");
+			oid[oidend] = 0;
+
+			install_pass_persist_handler(oid, line);
+		}
+	}
+}
 
 
 /* -----------------------------------------------------------------------------
@@ -307,11 +360,12 @@ static void handle_tcp_client_read(client_t *client)
 int main(int argc, char *argv[])
 {
 #ifdef ENABLE_TCP_SERVER
-	static const char short_options[] = "p:P:c:D:V:L:C:d:i:t:T:avlh";
+	static const char short_options[] = "f:p:P:c:D:V:L:C:d:i:t:T:avlh";
 #else
-	static const char short_options[] = "p:c:D:V:L:C:d:i:t:T:avlh";
+	static const char short_options[] = "f:p:c:D:V:L:C:d:i:t:T:avlh";
 #endif
 	static const struct option long_options[] = {
+		{ "netsnmp-conf", 1, 0, 'f' },
 		{ "udp-port", 1, 0, 'p' },
 #ifdef ENABLE_TCP_SERVER
 		{ "tcp-port", 1, 0, 'P' },
@@ -348,6 +402,7 @@ int main(int argc, char *argv[])
 #ifdef ENABLE_TCP_SERVER
 	int i;
 #endif
+	char const* conf_file = NULL;
 
 	/* Prevent TERM and HUP signals from interrupting system calls */
 	signal(SIGTERM, handle_signal);
@@ -367,6 +422,9 @@ int main(int argc, char *argv[])
 			break;
 		}
 		switch (c) {
+			case 'f':
+				conf_file = strdup(optarg);
+				break;
 			case 'p':
 				g_udp_port = atoi(optarg);
 				break;
@@ -413,6 +471,11 @@ int main(int argc, char *argv[])
 				print_help();
 				exit(EXIT_ARGS);
 		}
+	}
+
+	if (conf_file) {
+		parse_netsnmp_conf(conf_file);
+		free((void*)conf_file);
 	}
 
 	/* Print a starting message (so the user knows the args were ok) */

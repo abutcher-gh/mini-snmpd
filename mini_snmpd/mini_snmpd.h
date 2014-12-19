@@ -330,7 +330,6 @@ value_t *mib_find(const oid_t *oid, int *pos);
 value_t *mib_findnext(const oid_t *oid);
 
 
-
 #endif
 
 

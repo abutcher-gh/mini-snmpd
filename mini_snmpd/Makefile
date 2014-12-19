@@ -28,7 +28,7 @@
 CC	= gcc
 STRIP	= strip
 HEADERS	= mini_snmpd.h
-SOURCES	= mini_snmpd.c protocol.c mib.c globals.c utils.c linux.c freebsd.c
+SOURCES	= mini_snmpd.c protocol.c mib.c globals.c utils.c linux.c freebsd.c popen2.c pass_persist.c
 VERSION = 1.1
 VENDOR	= .1.3.6.1.4.1
 OFLAGS	= -O2 -DDEBUG -g
