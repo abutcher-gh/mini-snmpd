@@ -32,7 +32,7 @@ SOURCES	= mini_snmpd.c protocol.c mib.c globals.c utils.c linux.c freebsd.c
 VERSION = 1.1
 VENDOR	= .1.3.6.1.4.1
 OFLAGS	= -O2 -DDEBUG -g
-CFLAGS	= -Wall -Werror -DVERSION="\"$(VERSION)\"" -DVENDOR="\"$(VENDOR)\"" \
+CFLAGS	= -Wall -Werror -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -DVERSION="\"$(VERSION)\"" -DVENDOR="\"$(VENDOR)\"" \
 	  $(OFLAGS) -D__TRAPS__ -D__LINUX__ -D__DEMO__
 LDFLAGS	= $(OFLAGS)
 TARGET	= mini_snmpd

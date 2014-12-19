@@ -438,7 +438,7 @@ static int mib_update_entry(const oid_t *prefix, int column, int row,
 		return -1;
 	}
 
-	/* Search the the MIB for the given OID beginning at the given position */
+	/* Search the MIB for the given OID beginning at the given position */
 	value = mib_find(&oid, pos);
 	if (value == NULL) {
 		lprintf(LOG_ERR, "could not update MIB entry '%s.%d.%d': oid not found\n",
