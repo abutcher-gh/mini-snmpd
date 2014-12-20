@@ -192,7 +192,7 @@ oid_t *oid_aton(const char *str)
 
 	oid.subid_list_length = 0;
 	ptr = (char *)str;
-	while (*ptr != '\0') {
+	while (*ptr > 13) {
 		if (oid.subid_list_length >= MAX_NR_SUBIDS) {
 			return NULL;
 		}
@@ -200,7 +200,7 @@ oid_t *oid_aton(const char *str)
 			return NULL;
 		}
 		ptr++;
-		if (*ptr == '\0') {
+		if (*ptr <= 13) {
 			return NULL;
 		}
 		oid.subid_list[oid.subid_list_length++] = strtoul(ptr, &ptr, 0);
