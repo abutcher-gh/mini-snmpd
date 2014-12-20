@@ -29,7 +29,6 @@
 #include "mini_snmpd.h"
 
 
-
 int read_file(const char *filename, char *buffer, size_t size)
 {
 	FILE *fp;
@@ -118,8 +117,8 @@ int ticks_since(const struct timeval *tv_last, struct timeval *tv_now)
 
 void dump_packet(const client_t *client)
 {
-	struct in6_addr client_addr;
-	char straddr[INET6_ADDRSTRLEN];
+	struct inx_addr client_addr;
+	char straddr[INETX_ADDRSTRLEN];
 	char buffer[BUFSIZ];
 	int len;
 	int i;
@@ -133,7 +132,7 @@ void dump_packet(const client_t *client)
 			break;
 		}
 	}
-	inet_ntop(AF_INET6, &client_addr, straddr, sizeof(straddr));
+	inet_ntop(AF_INETX, &client_addr, straddr, sizeof(straddr));
 	lprintf(LOG_DEBUG, "%s %u bytes %s %s:%d (%s)\n",
 		client->outgoing ? "transmitted" : "received", (int) client->size,
 		client->outgoing ? "to" : "from", straddr,

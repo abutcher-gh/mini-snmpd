@@ -132,6 +132,28 @@
 	response->value_list_length++
 
 
+#if USE_IPV4
+#define PF_INETX           PF_INET
+#define AF_INETX           AF_INET
+#define INETX_ADDRSTRLEN   INET_ADDRSTRLEN
+#define sinx_family        sin_family
+#define sinx_port          sin_port
+#define sinx_addr          sin_addr
+#define sockaddr_inx       sockaddr_in
+#define inx_addr           in_addr
+#define sin_addr_set_any(v) do { v.s_addr = 0; } while (0)
+#else
+#define PF_INETX           PF_INET6
+#define AF_INETX           AF_INET6
+#define INETX_ADDRSTRLEN   INET6_ADDRSTRLEN
+#define sinx_family        sin6_family
+#define sinx_port          sin6_port
+#define sinx_addr          sin6_addr
+#define sockaddr_inx       sockaddr_in6
+#define inx_addr           in6_addr
+#define sin_addr_set_any(v) do { v = in6addr_any; } while (0)
+#endif
+
 
 /* -----------------------------------------------------------------------------
  * Data types
@@ -140,7 +162,7 @@
 typedef struct client_s {
 	time_t timestamp;
 	int sockfd;
-	struct in6_addr addr;
+	struct inx_addr addr;
 	in_port_t port;
 	unsigned char packet[MAX_PACKET_SIZE];
 	size_t size;
