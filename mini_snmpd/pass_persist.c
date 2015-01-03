@@ -6,8 +6,6 @@
 #include <stdlib.h>
 #include <memory.h>
 
-#define MAX_NR_HANDLERS 8
-
 typedef struct pp_handler
 {
 	struct pp_handler* next;
