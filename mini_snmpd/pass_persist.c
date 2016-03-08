@@ -36,16 +36,22 @@ void install_pass_persist_handler(const char* oid_prefix, const char* command)
 	memcpy(&p->prefix, oid_aton(oid_prefix), sizeof p->prefix);
 }
 
+value_t results[16];
+value_t *result_it = results;
+value_t *result_end = results + sizeof(results) / sizeof(*results);
+
 static value_t *handle_pass_persist(pp_handler* handler, const char* method, const oid_t *oid)
 {
-	static value_t result;
-
 	int mib_value_alloc(data_t *data, int type);
 	int set_oid_encoded_length(oid_t *oid);
 	int mib_set_value(data_t *data, int type, const void *dataval);
 
-	if (result.data.buffer == NULL)
-		mib_value_alloc(&result.data, BER_TYPE_INTEGER);
+	value_t *result = result_it++;
+	if (result_it == result_end)
+		result_it = results;
+
+	if (result->data.buffer == NULL)
+		mib_value_alloc(&result->data, BER_TYPE_INTEGER);
 
 	if (handler->pid == 0)
 		handler->pid = popen2(handler->command, &handler->to, &handler->from);
@@ -66,8 +72,8 @@ static value_t *handle_pass_persist(pp_handler* handler, const char* method, con
 		// TODO: handle error strings
 		return NULL;
 	}
-	memcpy(&result.oid, oid_aton(buf), sizeof result.oid);
-	set_oid_encoded_length(&result.oid);
+	memcpy(&result->oid, oid_aton(buf), sizeof result->oid);
+	set_oid_encoded_length(&result->oid);
 
 	// Type:
 	int type;
@@ -85,18 +91,18 @@ static value_t *handle_pass_persist(pp_handler* handler, const char* method, con
 	{
 	case BER_TYPE_OCTET_STRING:
 		strtok(buf, "\n");
-		mib_set_value(&result.data, type, buf);
+		mib_set_value(&result->data, type, buf);
 		break;
 
 	case BER_TYPE_INTEGER:
-		mib_set_value(&result.data, type, (void*)atoi(buf));
+		mib_set_value(&result->data, type, (void*)atoi(buf));
 		break;
 
 	default:
 		return NULL;
 	}
 
-	return &result;
+	return result;
 }
 
 value_t *maybe_handle_pass_persist(const char* method, const oid_t *oid)
