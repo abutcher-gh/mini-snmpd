@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <memory.h>
+#include <errno.h>
+#include <unistd.h>
 
 typedef struct pp_handler
 {
@@ -22,6 +24,10 @@ static pp_handler pass_persist_handlers[1];
 
 void install_pass_persist_handler(const char* oid_prefix, const char* command)
 {
+	/* Ignore broken pipe signals.
+	   The handler will be restarted if reads or writes fail.  */
+	signal(SIGPIPE, SIG_IGN);
+
 	pp_handler* p;
 	for (p = pass_persist_handlers; p && p->command; p = p->next)
 	{
@@ -53,18 +59,33 @@ static value_t *handle_pass_persist(pp_handler* handler, const char* method, con
 	if (result->data.buffer == NULL)
 		mib_value_alloc(&result->data, BER_TYPE_INTEGER);
 
+	#define maybe_retry_due_to_pipe_fail do {				\
+		if (ferror(handler->to) || ferror(handler->from))	\
+			if (errno == EPIPE) {							\
+				close(handler->pid); handler->pid = 0;		\
+				goto retry;									\
+			}												\
+	} while (0)
+
+	int retries = 0;
+
+retry:
+
+	if (++retries > 5)
+		return NULL;
+
 	if (handler->pid == 0)
 		handler->pid = popen2(handler->command, &handler->to, &handler->from);
 
 	// Post request to co-process.
 	fprintf(handler->to, "%s\n%s\n", method, oid_ntoa(oid));
-	fflush(handler->to);
+	fflush(handler->to); maybe_retry_due_to_pipe_fail;
 
 	// Handle response.
 	char buf[2048];
 
 	// OID, "NONE" or 'error-string':
-	fgets(buf, 2048, handler->from);
+	fgets(buf, 2048, handler->from); maybe_retry_due_to_pipe_fail;
 	if (buf[0] != '.')
 	{
 		if (strncmp("NONE", buf, 4) == 0)
@@ -77,7 +98,7 @@ static value_t *handle_pass_persist(pp_handler* handler, const char* method, con
 
 	// Type:
 	int type;
-	fgets(buf, 2048, handler->from);
+	fgets(buf, 2048, handler->from); maybe_retry_due_to_pipe_fail;
 	if (strncmp("string", buf, 6) == 0)
 		type = BER_TYPE_OCTET_STRING;
 	else if (strncmp("integer", buf, 7) == 0)
@@ -86,7 +107,7 @@ static value_t *handle_pass_persist(pp_handler* handler, const char* method, con
 		return NULL;
 
 	// Value:
-	fgets(buf, 2048, handler->from);
+	fgets(buf, 2048, handler->from); maybe_retry_due_to_pipe_fail;
 	switch (type)
 	{
 	case BER_TYPE_OCTET_STRING:
