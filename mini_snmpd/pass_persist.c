@@ -97,14 +97,16 @@ retry:
 	set_oid_encoded_length(&result->oid);
 
 	// Type:
-	int type;
+	int type = BER_TYPE_NO_SUCH_OBJECT;
 	fgets(buf, 2048, handler->from); maybe_retry_due_to_pipe_fail;
 	if (strncmp("string", buf, 6) == 0)
 		type = BER_TYPE_OCTET_STRING;
 	else if (strncmp("integer", buf, 7) == 0)
 		type = BER_TYPE_INTEGER;
-	else
-		return NULL;
+	else if (strncmp("unsigned", buf, 8) == 0 || strncmp("gauge", buf, 5) == 0)
+		type = BER_TYPE_GAUGE;
+	else if (strncmp("counter", buf, 7) == 0)
+		type = BER_TYPE_COUNTER;
 
 	// Value:
 	fgets(buf, 2048, handler->from); maybe_retry_due_to_pipe_fail;
@@ -116,6 +118,8 @@ retry:
 		break;
 
 	case BER_TYPE_INTEGER:
+	case BER_TYPE_COUNTER:
+	case BER_TYPE_GAUGE:
 		mib_set_value(&result->data, type, (void*)atoi(buf));
 		break;
 
